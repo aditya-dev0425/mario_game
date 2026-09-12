@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Arcade Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #222; /* Dark background to make the canvas pop */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden; /* Prevents scrollbars */
+        }
+        canvas {
+            background-color: #000; /* Black background for the game area */
+            border: 2px solid #555;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            /* Crisp rendering for pixel art/sprites */
+            image-rendering: pixelated; 
+        }
+    </style>
+</head>
+<body>
+
+    <!-- The canvas where your game and sprite sheets will be drawn -->
+    <canvas id="gameCanvas" width="448" height="496"></canvas>
+
+    <!-- Your main game logic script -->
+    <script src="app.js"></script>
+</body>
+</html>
