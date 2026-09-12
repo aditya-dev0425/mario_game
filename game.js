@@ -2,7 +2,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 const GRAVITY = 0.5;
-const JUMP_POWER = -10;
+const JUMP_POWER = -12; 
 const SPEED = 5;
 
 class Player {
@@ -70,18 +70,32 @@ function animate() {
         player.velocity.x = 0; 
     }
 
-    // NEW: Collision Detection
+   // NEW: Full Directional Collision Detection
     platforms.forEach(platform => {
-        // Check if player is falling ONTO the platform
-        if (
-            player.position.y + player.height <= platform.position.y && // Bottom of player is above platform
-            player.position.y + player.height + player.velocity.y >= platform.position.y && // Next frame will hit it
-            player.position.x + player.width >= platform.position.x && // Right side of player is past left side of platform
-            player.position.x <= platform.position.x + platform.width // Left side of player is past right side of platform
-        ) {
-            player.velocity.y = 0; // Stop falling
-            // Snap exactly to the top so we don't sink in
-            player.position.y = platform.position.y - player.height; 
+        // First, check if the player is lined up horizontally with the platform
+        const isHorizontallyAligned = 
+            player.position.x + player.width >= platform.position.x &&
+            player.position.x <= platform.position.x + platform.width;
+
+        if (isHorizontallyAligned) {
+            
+            // 1. Landing on TOP of the platform (Moving Down)
+            if (
+                player.position.y + player.height - player.velocity.y <= platform.position.y && 
+                player.position.y + player.height >= platform.position.y
+            ) {
+                player.velocity.y = 0; 
+                player.position.y = platform.position.y - player.height; 
+            }
+            
+            // 2. Bumping HEAD on the BOTTOM of the platform (Moving Up)
+            else if (
+                player.position.y - player.velocity.y >= platform.position.y + platform.height && 
+                player.position.y <= platform.position.y + platform.height
+            ) {
+                player.velocity.y = 0; // Kill upward momentum
+                player.position.y = platform.position.y + platform.height; // Snap just below the block
+            }
         }
     });
 }
@@ -90,7 +104,7 @@ window.addEventListener('keydown', (e) => {
     switch (e.code) {
         case 'KeyA': keys.left = true; break;
         case 'KeyD': keys.right = true; break;
-        case 'KeyW': 
+        case 'Space': // Changed from KeyW
             if (player.velocity.y === 0) player.velocity.y = JUMP_POWER; 
             break;
     }
