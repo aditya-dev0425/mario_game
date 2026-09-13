@@ -4,6 +4,8 @@ const ctx = canvas.getContext('2d');
 const GRAVITY = 0.5;
 const JUMP_POWER = -12; 
 const SPEED = 5;
+// Add this near your other variables at the top
+let scrollOffset = 0;
 
 class Player {
     constructor() {
@@ -141,12 +143,31 @@ function animate() {
     
     player.update();
 
-    if (keys.right) {
+    // PHASE 4: CAMERA SCROLLING LOGIC
+    // 1. Move the player if they are within the screen boundaries
+    if (keys.right && player.position.x < 400) {
         player.velocity.x = SPEED;
-    } else if (keys.left) {
+    } else if (
+        (keys.left && player.position.x > 100) || 
+        (keys.left && scrollOffset === 0 && player.position.x > 0)
+    ) {
         player.velocity.x = -SPEED;
-    } else {
+    } 
+    // 2. If the player hits the boundary, stop the player and move the platforms!
+    else {
         player.velocity.x = 0; 
+
+        if (keys.right) {
+            scrollOffset += SPEED;
+            platforms.forEach(platform => {
+                platform.position.x -= SPEED;
+            });
+        } else if (keys.left && scrollOffset > 0) {
+            scrollOffset -= SPEED;
+            platforms.forEach(platform => {
+                platform.position.x += SPEED;
+            });
+        }
     }
 
    // Full Directional Collision Detection
