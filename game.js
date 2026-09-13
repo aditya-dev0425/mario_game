@@ -9,27 +9,103 @@ class Player {
     constructor() {
         this.position = { x: 100, y: 100 };
         this.velocity = { x: 0, y: 0 };
-        this.width = 30;
-        this.height = 30;
+        
+        // Your exact Figma measurements
+        this.width = 22;  
+        this.height = 32; 
+
+        this.image = new Image();
+        this.image.src = './assets/movement-no-bg.png'; // Updated file name
+
+        this.frames = 0;       
+        this.tickCount = 0;    
+        this.state = 'idle';   
+
+        // Map the coordinates
+        this.sprites = {
+            idle: { frames: [{ x: 0, y: 32 }] }, 
+            run:  { frames: [
+                { x: 0, y: 64 }, 
+                { x: 22, y: 64 }, 
+                { x: 44, y: 64 }
+            ]}, 
+            jump: { frames: [{ x: 0, y: 0 }] } 
+        };
     }
 
     draw() {
-        ctx.fillStyle = 'red'; 
-        ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+        const currentAnimation = this.sprites[this.state];
+        
+        // Fallback to frame 0 if the current frame exceeds the available frames in a new state
+        if (this.frames >= currentAnimation.frames.length) {
+            this.frames = 0;
+        }
+
+        const sx = currentAnimation.frames[this.frames].x;
+        const sy = currentAnimation.frames[this.frames].y;
+
+        ctx.save();
+
+        if (keys.left) {
+            // The Canvas Flip Trick
+            ctx.translate(this.position.x + this.width, this.position.y);
+            ctx.scale(-1, 1);
+            
+            ctx.drawImage(
+                this.image,
+                sx, sy, this.width, this.height, 
+                0, 0, this.width * 2, this.height * 2 
+            );
+        } else {
+            // Normal Right-Facing Draw
+            ctx.drawImage(
+                this.image,
+                sx, sy, this.width, this.height, 
+                this.position.x, this.position.y, this.width * 2, this.height * 2 
+            );
+        }
+
+        ctx.restore();
     }
 
     update() {
         this.position.x += this.velocity.x;
         this.position.y += this.velocity.y;
-        this.draw();
         
-        // We removed the canvas bottom check here! 
-        // Gravity ALWAYS applies now.
+        let previousState = this.state;
+
+        // FIX: Use 'run' for both directions since draw() handles the flip
+        if (this.velocity.y !== 0) {
+            this.state = 'jump';
+        } else if (this.velocity.x !== 0) { 
+            this.state = 'run';
+        } else {
+            this.state = 'idle';
+        }
+
+        // Reset frame to 0 if we changed states
+        if (this.state !== previousState) {
+            this.frames = 0;
+        }
+
+        // Handle Animation Timing
+        this.tickCount++;
+        if (this.tickCount > 5) {
+            this.frames++;
+            this.tickCount = 0;
+            
+            // FIX: Loop the animation using array length
+            if (this.frames >= this.sprites[this.state].frames.length) {
+                this.frames = 0;
+            }
+        }
+
+        this.draw();
         this.velocity.y += GRAVITY; 
     }
-}
+} // <--- FIX: The closing bracket for the Player class was moved here!
 
-// NEW: Platform Class
+// Platform Class
 class Platform {
     constructor(x, y, width, height) {
         this.position = { x, y };
@@ -70,7 +146,7 @@ function animate() {
         player.velocity.x = 0; 
     }
 
-   // NEW: Full Directional Collision Detection
+   // Full Directional Collision Detection
     platforms.forEach(platform => {
         // First, check if the player is lined up horizontally with the platform
         const isHorizontallyAligned = 
@@ -104,7 +180,7 @@ window.addEventListener('keydown', (e) => {
     switch (e.code) {
         case 'KeyA': keys.left = true; break;
         case 'KeyD': keys.right = true; break;
-        case 'Space': // Changed from KeyW
+        case 'Space': 
             if (player.velocity.y === 0) player.velocity.y = JUMP_POWER; 
             break;
     }
