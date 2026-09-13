@@ -10,25 +10,30 @@ class Player {
         this.position = { x: 100, y: 100 };
         this.velocity = { x: 0, y: 0 };
         
-        // Your exact Figma measurements
-        this.width = 22;  
-        this.height = 32; 
+        // Exact math based on your 165x240 image (4 cols, 4 rows)
+        this.width = 41.25;  
+        this.height = 60;    
 
         this.image = new Image();
-        this.image.src = './assets/movement-no-bg.png'; // Updated file name
+        this.image.src = './assets/images/movement-no-bg.png'; 
 
         this.frames = 0;       
         this.tickCount = 0;    
         this.state = 'idle';   
 
-        // Map the coordinates
+        // Map the coordinates using the true 60px row heights and 41.25px column widths
         this.sprites = {
-            idle: { frames: [{ x: 0, y: 32 }] }, 
+            // Idle: Row 2, Column 1
+            idle: { frames: [{ x: 0, y: 60 }] }, 
+            
+            // Run: Row 3, Columns 1, 2, 3
             run:  { frames: [
-                { x: 0, y: 64 }, 
-                { x: 22, y: 64 }, 
-                { x: 44, y: 64 }
+                { x: 0, y: 120 }, 
+                { x: 41.25, y: 120 }, 
+                { x: 82.5, y: 120 }
             ]}, 
+            
+            // Jump: Row 1, Column 1
             jump: { frames: [{ x: 0, y: 0 }] } 
         };
     }
@@ -47,21 +52,22 @@ class Player {
         ctx.save();
 
         if (keys.left) {
-            // The Canvas Flip Trick
+            // The Canvas Flip Trick for running left
             ctx.translate(this.position.x + this.width, this.position.y);
             ctx.scale(-1, 1);
             
+            // Draw without the * 2 multiplier since 60px is already a good height
             ctx.drawImage(
                 this.image,
                 sx, sy, this.width, this.height, 
-                0, 0, this.width * 2, this.height * 2 
+                0, 0, this.width, this.height 
             );
         } else {
             // Normal Right-Facing Draw
             ctx.drawImage(
                 this.image,
                 sx, sy, this.width, this.height, 
-                this.position.x, this.position.y, this.width * 2, this.height * 2 
+                this.position.x, this.position.y, this.width, this.height 
             );
         }
 
@@ -74,7 +80,6 @@ class Player {
         
         let previousState = this.state;
 
-        // FIX: Use 'run' for both directions since draw() handles the flip
         if (this.velocity.y !== 0) {
             this.state = 'jump';
         } else if (this.velocity.x !== 0) { 
@@ -83,7 +88,6 @@ class Player {
             this.state = 'idle';
         }
 
-        // Reset frame to 0 if we changed states
         if (this.state !== previousState) {
             this.frames = 0;
         }
@@ -94,7 +98,6 @@ class Player {
             this.frames++;
             this.tickCount = 0;
             
-            // FIX: Loop the animation using array length
             if (this.frames >= this.sprites[this.state].frames.length) {
                 this.frames = 0;
             }
