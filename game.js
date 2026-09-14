@@ -1,41 +1,52 @@
+// ==========================================
+// SETUP & CONSTANTS
+// ==========================================
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 const GRAVITY = 0.5;
 const JUMP_POWER = -12; 
 const SPEED = 5;
-// Add this near your other variables at the top
-let scrollOffset = 0;
 
+// Global Game States
+let lives = 3;
+let isGameOver = false;
+let isGameWon = false;
+
+let player;
+let platforms = [];
+let goal; 
+let scrollOffset = 0;
+const keys = { right: false, left: false };
+
+// ==========================================
+// CLASSES
+// ==========================================
 class Player {
     constructor() {
         this.position = { x: 100, y: 100 };
         this.velocity = { x: 0, y: 0 };
         
-        // Exact math based on your 165x240 image (4 cols, 4 rows)
+        // Exact math based on your 165x240 image (4 columns, 4 rows)
         this.width = 41.25;  
         this.height = 60;    
 
         this.image = new Image();
         this.image.src = './assets/images/movement-no-bg.png'; 
 
+        // Animation control variables
         this.frames = 0;       
         this.tickCount = 0;    
         this.state = 'idle';   
 
-        // Map the coordinates using the true 60px row heights and 41.25px column widths
+        // Coordinate map for the sprite sheet
         this.sprites = {
-            // Idle: Row 2, Column 1
             idle: { frames: [{ x: 0, y: 60 }] }, 
-            
-            // Run: Row 3, Columns 1, 2, 3
             run:  { frames: [
                 { x: 0, y: 120 }, 
                 { x: 41.25, y: 120 }, 
                 { x: 82.5, y: 120 }
             ]}, 
-            
-            // Jump: Row 1, Column 1
             jump: { frames: [{ x: 0, y: 0 }] } 
         };
     }
@@ -43,7 +54,6 @@ class Player {
     draw() {
         const currentAnimation = this.sprites[this.state];
         
-        // Fallback to frame 0 if the current frame exceeds the available frames in a new state
         if (this.frames >= currentAnimation.frames.length) {
             this.frames = 0;
         }
@@ -58,7 +68,6 @@ class Player {
             ctx.translate(this.position.x + this.width, this.position.y);
             ctx.scale(-1, 1);
             
-            // Draw without the * 2 multiplier since 60px is already a good height
             ctx.drawImage(
                 this.image,
                 sx, sy, this.width, this.height, 
@@ -94,7 +103,6 @@ class Player {
             this.frames = 0;
         }
 
-        // Handle Animation Timing
         this.tickCount++;
         if (this.tickCount > 5) {
             this.frames++;
@@ -108,9 +116,8 @@ class Player {
         this.draw();
         this.velocity.y += GRAVITY; 
     }
-} // <--- FIX: The closing bracket for the Player class was moved here!
+}
 
-// Platform Class
 class Platform {
     constructor(x, y, width, height) {
         this.position = { x, y };
@@ -124,27 +131,83 @@ class Platform {
     }
 }
 
-const player = new Player();
-const keys = { right: false, left: false };
+class Goal {
+    constructor(x, y, width, height) {
+        this.position = { x, y };
+        this.width = width;
+        this.height = height;
+    }
 
-// Create some platforms
-const platforms = [
-    new Platform(0, canvas.height - 40, canvas.width, 40), // Main Ground
-    new Platform(250, 300, 100, 20),                       // Floating block 1
-    new Platform(450, 200, 150, 20)                        // Floating block 2
-];
+    draw() {
+        ctx.fillStyle = 'gold'; 
+        ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+    }
+}
 
+// ==========================================
+// GAME INITIALIZATION & MAP
+// ==========================================
+function init() {
+    player = new Player();
+    scrollOffset = 0; 
+    
+    // Expanded Level Map
+    platforms = [
+        new Platform(0, canvas.height - 40, 500, 40),       
+        new Platform(600, canvas.height - 40, 800, 40),     
+        new Platform(250, 300, 100, 20),                    
+        new Platform(800, 200, 100, 20),                    
+        new Platform(1100, 300, 150, 20),                   
+        new Platform(1500, canvas.height - 40, 1200, 40),   
+        new Platform(1900, 250, 150, 20),                   
+        new Platform(2200, 150, 100, 20),                   
+        new Platform(2500, 250, 100, 20),
+        new Platform(2900, canvas.height - 40, 800, 40)     
+    ];
+
+    // Place the goal flag at the end
+    goal = new Goal(3400, canvas.height - 340, 20, 300); 
+}
+
+// ==========================================
+// MAIN GAME LOOP
+// ==========================================
 function animate() {
     requestAnimationFrame(animate);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw all platforms first so they render behind the player
+    // 1. Draw Environment
     platforms.forEach(platform => platform.draw());
+    goal.draw();
     
+    // 2. Draw UI (Lives)
+    ctx.fillStyle = 'black';
+    ctx.font = '20px Arial';
+    ctx.fillText(`Lives: ${lives}`, 20, 30);
+
+    // 3. Game Over / Win Screens
+    if (isGameOver) {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'red';
+        ctx.font = '50px Arial';
+        ctx.fillText("GAME OVER", canvas.width / 2 - 150, canvas.height / 2);
+        return; 
+    }
+
+    if (isGameWon) {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'gold';
+        ctx.font = '50px Arial';
+        ctx.fillText("YOU WIN!", canvas.width / 2 - 120, canvas.height / 2);
+        return; 
+    }
+
+    // 4. Update Player
     player.update();
 
-    // PHASE 4: CAMERA SCROLLING LOGIC
-    // 1. Move the player if they are within the screen boundaries
+    // 5. CAMERA SCROLLING & MOVEMENT LOGIC
     if (keys.right && player.position.x < 400) {
         player.velocity.x = SPEED;
     } else if (
@@ -152,54 +215,67 @@ function animate() {
         (keys.left && scrollOffset === 0 && player.position.x > 0)
     ) {
         player.velocity.x = -SPEED;
-    } 
-    // 2. If the player hits the boundary, stop the player and move the platforms!
-    else {
+    } else {
         player.velocity.x = 0; 
-
         if (keys.right) {
-            scrollOffset += SPEED;
-            platforms.forEach(platform => {
-                platform.position.x -= SPEED;
-            });
+            scrollOffset += SPEED; 
+            platforms.forEach(platform => platform.position.x -= SPEED);
+            goal.position.x -= SPEED; 
         } else if (keys.left && scrollOffset > 0) {
             scrollOffset -= SPEED;
-            platforms.forEach(platform => {
-                platform.position.x += SPEED;
-            });
+            platforms.forEach(platform => platform.position.x += SPEED);
+            goal.position.x += SPEED;
         }
     }
 
-   // Full Directional Collision Detection
+    // 6. COLLISION DETECTION (Platforms)
     platforms.forEach(platform => {
-        // First, check if the player is lined up horizontally with the platform
         const isHorizontallyAligned = 
             player.position.x + player.width >= platform.position.x &&
             player.position.x <= platform.position.x + platform.width;
 
         if (isHorizontallyAligned) {
-            
-            // 1. Landing on TOP of the platform (Moving Down)
             if (
                 player.position.y + player.height - player.velocity.y <= platform.position.y && 
                 player.position.y + player.height >= platform.position.y
             ) {
                 player.velocity.y = 0; 
                 player.position.y = platform.position.y - player.height; 
-            }
-            
-            // 2. Bumping HEAD on the BOTTOM of the platform (Moving Up)
-            else if (
+            } else if (
                 player.position.y - player.velocity.y >= platform.position.y + platform.height && 
                 player.position.y <= platform.position.y + platform.height
             ) {
-                player.velocity.y = 0; // Kill upward momentum
-                player.position.y = platform.position.y + platform.height; // Snap just below the block
+                player.velocity.y = 0; 
+                player.position.y = platform.position.y + platform.height; 
             }
         }
     });
+
+    // 7. WIN / LOSS CONDITIONS
+    
+    // Win: Touch the Goal Pole
+    if (
+        player.position.x + player.width >= goal.position.x &&
+        player.position.x <= goal.position.x + goal.width &&
+        player.position.y + player.height >= goal.position.y
+    ) {
+        isGameWon = true; 
+    }
+
+    // Loss: Fall in a pit
+    if (player.position.y > canvas.height) {
+        lives -= 1; 
+        if (lives <= 0) {
+            isGameOver = true;
+        } else {
+            init(); 
+        }
+    }
 }
 
+// ==========================================
+// EVENT LISTENERS
+// ==========================================
 window.addEventListener('keydown', (e) => {
     switch (e.code) {
         case 'KeyA': keys.left = true; break;
@@ -217,4 +293,6 @@ window.addEventListener('keyup', (e) => {
     }
 });
 
+// Start the game for the first time
+init();
 animate();
